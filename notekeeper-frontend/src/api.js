@@ -1,4 +1,5 @@
 const base = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+fetch(`${base}/notes`);
 
 export async function listNotes() {
   const res = await fetch(`${base}/notes`);
