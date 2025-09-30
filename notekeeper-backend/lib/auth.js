@@ -11,7 +11,7 @@ if (!JWT_SECRET) {
 
 // Create a signed JWT for user
 export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES || "7d" });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES || "7d" });
 }
 
 // Middleware to verify JWT and set req.user
@@ -23,7 +23,7 @@ export function authMiddleware(req, res, next) {
       .json({ error: "Missing or invalid Authorization header" });
   }
 
-  const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({ error: "Missing token" });

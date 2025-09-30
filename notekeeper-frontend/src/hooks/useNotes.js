@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { listNotes, createNote, updateNote, deleteNote } from "../api.js";
+import { api } from "../api";
 import toast from "react-hot-toast";
 
 export function useNotes() {
@@ -12,7 +12,7 @@ export function useNotes() {
   const refresh = useCallback(async () => {
     setError("");
     try {
-      const data = await listNotes();
+      const data = await api.listNotes();
       setNotes(data);
     } catch (e) {
       const errorMsg = e.message || "Failed to load notes";
@@ -30,7 +30,7 @@ export function useNotes() {
   // Create note
   const handleCreate = useCallback(async (payload) => {
     try {
-      await createNote(payload);
+      await api.createNote(payload);
       await refresh();
       toast.success("Note created successfully!");
     } catch (e) {
@@ -43,7 +43,7 @@ export function useNotes() {
   // Update note
   const handleUpdate = useCallback(async (id, payload) => {
     try {
-      await updateNote(id, payload);
+      await api.updateNote(id, payload);
       await refresh();
       toast.success("Note updated!");
     } catch (e) {
@@ -56,7 +56,7 @@ export function useNotes() {
   // Delete note
   const handleDelete = useCallback(async (id) => {
     try {
-      await deleteNote(id);
+      await api.deleteNote(id);
       await refresh();
       toast.success("Note deleted");
     } catch (e) {
@@ -77,6 +77,7 @@ export function useNotes() {
 
   return {
     notes: filteredNotes,
+    totalNotes: notes.length,  // Add total count of unfiltered notes
     loading,
     error,
     searchTerm,

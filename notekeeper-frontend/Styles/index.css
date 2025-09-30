@@ -1,0 +1,36 @@
+/* ===== NoteKeeper CSS - Main Entry Point ===== */
+
+/* Base Styles - Foundation */
+@import './base/variables.css';
+@import './base/reset.css';
+
+/* Layout - Structural Components */
+@import './layout/container.css';
+@import './layout/header.css';
+
+/* Components - UI Elements */
+@import './components/buttons.css';
+@import './components/cards.css';
+@import './components/forms.css';
+@import './components/auth.css';
+@import './components/notes.css';
+
+/* Utilities - Helper Classes */
+@import './utilities/states.css';
+@import './utilities/responsive.css';
+
+/* 
+  CSS Architecture:
+  
+  1. Base: Variables, reset, and foundational styles
+  2. Layout: Major structural components (header, containers)
+  3. Components: Reusable UI components (buttons, cards, forms)
+  4. Utilities: Helper classes for states and responsive design
+  
+  Naming Convention:
+  - BEM-inspired but simplified
+  - Component names: .component-name
+  - Component variants: .component-name--variant
+  - Component children: .component-name__child
+  - Utility classes: .utility-name
+*/
