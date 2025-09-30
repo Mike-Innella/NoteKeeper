@@ -130,12 +130,6 @@ app.post(
       writeNotes(notes);
       res.status(201).json(newNote);
     } catch (error) {
-      
-      const notes = readNotes();
-      notes.push(newNote);
-      writeNotes(notes);
-      res.status(201).json(newNote);
-    } catch (error) {
       console.error("Error creating note:", error);
       res.status(500).json({ error: "Failed to create note" });
     }
