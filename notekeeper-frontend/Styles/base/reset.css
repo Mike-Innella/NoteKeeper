@@ -1,0 +1,59 @@
+/* ===== CSS Reset & Base Styles ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  /* Base font size: 8px = 1rem for easier calculations */
+  font-size: 8px;
+  font-family: var(--font-family);
+  line-height: var(--line-height-normal);
+  scroll-behavior: smooth;
+}
+
+body {
+  font-size: 2rem; /* 16px */
+  background: var(--gray-50);
+  color: var(--gray-900);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Focus States for Accessibility ===== */
+:focus-visible {
+  outline: 0.25rem solid var(--primary);
+  outline-offset: 0.25rem;
+}
+
+/* ===== Animation Preferences ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== Animations ===== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

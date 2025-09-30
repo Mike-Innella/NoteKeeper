@@ -1,36 +1,50 @@
-const base = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-fetch(`${base}/notes`);
+// src/api.js
+import { getToken } from "./auth";
 
-export async function listNotes() {
-  const res = await fetch(`${base}/notes`);
-  if (!res.ok) throw new Error("Failed to fetch notes");
-  return res.json();
+const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+function authHeaders() {
+  const tok = getToken();
+  return tok ? { Authorization: `Bearer ${tok}` } : {};
 }
 
-export async function createNote(payload) {
-  const res = await fetch(`${base}/notes`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+async function http(path, opts = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(opts.headers || {}),
+    },
+    ...opts,
   });
-  if (!res.ok) throw new Error("Failed to create note");
-  return res.json();
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText} – ${text || path}`);
+  }
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("application/json") ? res.json() : undefined;
 }
 
-export async function updateNote(id, payload) {
-  const res = await fetch(`${base}/notes/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to update note");
-  return res.json();
-}
-
-export async function deleteNote(id) {
-  const res = await fetch(`${base}/notes/${id}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) throw new Error("Failed to delete note");
-  return true;
-}
+export const api = {
+  health: () => http("/"),
+  
+  // Authentication
+  register: (email, password) =>
+    http("/auth/register", { 
+      method: "POST", 
+      body: JSON.stringify({ email, password }) 
+    }),
+  login: (email, password) =>
+    http("/auth/login", { 
+      method: "POST", 
+      body: JSON.stringify({ email, password }) 
+    }),
+  
+  // Notes
+  listNotes: () => http("/notes"),
+  createNote: (note) =>
+    http("/notes", { method: "POST", body: JSON.stringify(note) }),
+  updateNote: (id, patch) =>
+    http(`/notes/${id}`, { method: "PUT", body: JSON.stringify(patch) }),
+  deleteNote: (id) => http(`/notes/${id}`, { method: "DELETE" }),
+};

@@ -4,3 +4,6 @@ db/*.json
 
 .vercel
 .env
+
+.env.development
+.env.production

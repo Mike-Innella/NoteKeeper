@@ -1,0 +1,42 @@
+/* ===== Layout Containers ===== */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 150rem; /* 1200px */
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  padding: var(--spacing-xl) 0;
+}
+
+/* Container variants */
+.container--small {
+  max-width: 80rem; /* 640px */
+}
+
+.container--medium {
+  max-width: 120rem; /* 960px */
+}
+
+.container--large {
+  max-width: 180rem; /* 1440px */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .main-content {
+    padding: var(--spacing-lg) 0;
+  }
+}

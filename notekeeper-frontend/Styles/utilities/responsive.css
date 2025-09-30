@@ -1,0 +1,165 @@
+/* ===== Responsive Utilities and Print Styles ===== */
+
+/* Print Styles */
+@media print {
+  .header,
+  .search-bar,
+  .note-form,
+  .btn,
+  .auth-container {
+    display: none !important;
+  }
+  
+  .note-card {
+    break-inside: avoid;
+  }
+  
+  body {
+    background: white;
+  }
+}
+
+/* Utility Classes for Responsive Design */
+
+/* Hide elements on different screen sizes */
+.hide-mobile {
+  display: block;
+}
+
+.hide-tablet {
+  display: block;
+}
+
+.hide-desktop {
+  display: none;
+}
+
+/* Show elements only on specific screen sizes */
+.show-mobile-only {
+  display: none;
+}
+
+.show-tablet-only {
+  display: none;
+}
+
+.show-desktop-only {
+  display: block;
+}
+
+/* Responsive Text Alignment */
+.text-center-mobile {
+  text-align: left;
+}
+
+.text-center-tablet {
+  text-align: left;
+}
+
+/* Responsive Spacing Utilities */
+.p-mobile {
+  padding: var(--spacing-md);
+}
+
+.m-mobile {
+  margin: var(--spacing-md);
+}
+
+/* Tablet Styles (768px and below) */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: block;
+  }
+  
+  .hide-tablet {
+    display: none;
+  }
+  
+  .hide-desktop {
+    display: none;
+  }
+  
+  .show-tablet-only {
+    display: block;
+  }
+  
+  .show-desktop-only {
+    display: none;
+  }
+  
+  .text-center-tablet {
+    text-align: center;
+  }
+}
+
+/* Mobile Styles (480px and below) */
+@media (max-width: 480px) {
+  .hide-mobile {
+    display: none;
+  }
+  
+  .hide-tablet {
+    display: none;
+  }
+  
+  .hide-desktop {
+    display: none;
+  }
+  
+  .show-mobile-only {
+    display: block;
+  }
+  
+  .show-tablet-only {
+    display: none;
+  }
+  
+  .show-desktop-only {
+    display: none;
+  }
+  
+  .text-center-mobile {
+    text-align: center;
+  }
+  
+  .p-mobile {
+    padding: var(--spacing-sm);
+  }
+  
+  .m-mobile {
+    margin: var(--spacing-sm);
+  }
+}
+
+/* Responsive Grid Utilities */
+.grid-cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 768px) {
+  .grid-cols-md-1 {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-cols-md-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-cols-sm-1 {
+    grid-template-columns: 1fr;
+  }
+}

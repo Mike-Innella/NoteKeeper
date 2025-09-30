@@ -4,30 +4,28 @@ import PropTypes from "prop-types";
 function NoteForm({ onCreate }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() && !content.trim()) return;
-    if (isSubmitting) return;
 
-    setIsSubmitting(true);
+    setIsCreating(true);
     try {
-      await onCreate({ title, content });
+      await onCreate({ title: title.trim(), content: content.trim() });
       setTitle("");
       setContent("");
     } catch (error) {
       console.error("Failed to create note:", error);
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
-  }
+  };
 
   return (
-    <div className="card">
-      <form onSubmit={handleSubmit} className="note-form">
-        <h2 className="form-title">Create New Note</h2>
-        
+    <div className="card note-form">
+      <h2 className="form-title">Create a New Note</h2>
+      <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="note-title" className="form-label">
             Title
@@ -35,55 +33,52 @@ function NoteForm({ onCreate }) {
           <input
             id="note-title"
             type="text"
-            placeholder="Enter a title for your note"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            disabled={isSubmitting}
-            maxLength={200}
+            placeholder="Enter a title for your note"
             className="form-input"
-            aria-label="Note title"
+            disabled={isCreating}
+            maxLength={200}
           />
         </div>
-        
+
         <div className="form-group">
           <label htmlFor="note-content" className="form-label">
             Content
           </label>
           <textarea
             id="note-content"
-            rows={4}
-            placeholder="Write your note content here..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            disabled={isSubmitting}
-            maxLength={10000}
+            placeholder="What's on your mind?"
             className="form-textarea"
-            aria-label="Note content"
+            rows={4}
+            disabled={isCreating}
+            maxLength={10000}
           />
           <div className="form-hint">
             {content.length}/10000 characters
           </div>
         </div>
-        
+
         <div className="form-actions">
           <button
             type="button"
+            className="btn btn-secondary"
             onClick={() => {
               setTitle("");
               setContent("");
             }}
-            disabled={isSubmitting || (!title && !content)}
-            className="btn btn-secondary"
+            disabled={isCreating || (!title && !content)}
           >
             Clear
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || (!title.trim() && !content.trim())}
             className="btn btn-primary"
-            aria-label={isSubmitting ? "Creating note..." : "Add note"}
+            disabled={isCreating || (!title.trim() && !content.trim())}
           >
-            {isSubmitting ? (
+            {isCreating ? (
               <>
                 <span className="btn-spinner"></span>
                 Creating...
@@ -91,9 +86,10 @@ function NoteForm({ onCreate }) {
             ) : (
               <>
                 <svg className="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                Add Note
+                Create Note
               </>
             )}
           </button>

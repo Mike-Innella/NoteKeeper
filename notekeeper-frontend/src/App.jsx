@@ -1,15 +1,19 @@
-import React, { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import "./styles.css";
-import NoteForm from "./components/NoteForm.jsx";
-import NotesList from "./components/NotesList.jsx";
-import SearchBar from "./components/SearchBar.jsx";
-import ErrorBoundary from "./components/ErrorBoundary.jsx";
-import { useNotes } from "./hooks/useNotes.js";
+import NoteForm from "./components/NoteForm";
+import NotesList from "./components/NotesList";
+import SearchBar from "./components/SearchBar";
+import ErrorBoundary from "./components/ErrorBoundary";
+import AuthGate from "./components/AuthGate";
+import { useNotes } from "./hooks/useNotes";
+import { getUser, clearToken, clearUser } from "./auth";
+import { api } from "./api";
 
-export default function App() {
+// Authenticated app content - only renders when user is logged in
+function AuthenticatedApp({ onNotesCountChange }) {
   const {
     notes,
+    totalNotes,
     loading,
     error,
     searchTerm,
@@ -19,25 +23,77 @@ export default function App() {
     handleDelete,
   } = useNotes();
 
-  // Keyboard shortcuts
+  // Update notes count in parent
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + K to focus search
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        const searchInput = document.querySelector('input[type="search"]');
-        if (searchInput) searchInput.focus();
-      }
-      
-      // Escape to clear search
-      if (e.key === "Escape" && searchTerm) {
-        setSearchTerm("");
+    onNotesCountChange(notes.length);
+  }, [notes.length, onNotesCountChange]);
+
+  return (
+    <main className="main-content">
+      <div className="container">
+        {/* Search bar - show when there are total notes, not just filtered */}
+        {totalNotes > 0 && !loading && (
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+          />
+        )}
+
+        {/* Note creation form */}
+        <NoteForm onCreate={handleCreate} />
+
+        {/* Notes list or loading/error states */}
+        {loading ? (
+          <div className="loading-state">
+            <div className="loading-spinner"></div>
+            <p>Loading your notes...</p>
+          </div>
+        ) : error ? (
+          <div className="error-state">
+            <svg className="error-icon" width="48" height="48" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 8V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <h3>Unable to load notes</h3>
+            <p>{error}</p>
+            <button onClick={() => window.location.reload()} className="btn btn-primary">
+              Try Again
+            </button>
+          </div>
+        ) : (
+          <NotesList
+            notes={notes}
+            onSave={handleUpdate}
+            onDelete={handleDelete}
+            searchTerm={searchTerm}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function App() {
+  const user = getUser();
+  const [apiStatus, setApiStatus] = useState('checking');
+  const [notesCount, setNotesCount] = useState(0);
+
+  // Check API health periodically
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        await api.health();
+        setApiStatus('online');
+      } catch {
+        setApiStatus('offline');
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [searchTerm, setSearchTerm]);
+    checkHealth();
+    const interval = setInterval(checkHealth, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -83,55 +139,33 @@ export default function App() {
                 <h1 className="app-title">NoteKeeper</h1>
               </div>
               <div className="header-info">
-                <span className="notes-count">{notes.length} notes</span>
+                {user && <span className="notes-count">{notesCount} notes</span>}
+                <span className="api-status">
+                  API Status: <span className={`status-dot ${apiStatus}`}>●</span>
+                </span>
+                {user && (
+                  <>
+                    <span className="user-email">{user.email}</span>
+                    <button
+                      className="btn btn-text"
+                      onClick={() => {
+                        clearToken();
+                        clearUser();
+                        location.reload();
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="main-content">
-          <div className="container">
-            {/* Search bar */}
-            {notes.length > 0 && !loading && (
-            <SearchBar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-            />
-            )}
-
-            {/* Note creation form */}
-            <NoteForm onCreate={handleCreate} />
-
-            {/* Notes list or loading/error states */}
-            {loading ? (
-              <div className="loading-state">
-                <div className="loading-spinner"></div>
-                <p>Loading your notes...</p>
-              </div>
-            ) : error ? (
-              <div className="error-state">
-                <svg className="error-icon" width="48" height="48" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 8V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <h3>Unable to load notes</h3>
-                <p>{error}</p>
-                <button onClick={() => window.location.reload()} className="btn btn-primary">
-                  Try Again
-                </button>
-              </div>
-            ) : (
-              <NotesList
-                notes={notes}
-                onSave={handleUpdate}
-                onDelete={handleDelete}
-                searchTerm={searchTerm}
-              />
-            )}
-          </div>
-        </main>
+        <AuthGate>
+          <AuthenticatedApp onNotesCountChange={setNotesCount} />
+        </AuthGate>
       </div>
     </ErrorBoundary>
   );
