@@ -17,6 +17,7 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   "http://localhost:5173", // local dev (Vite)
   "https://note-keeper-lac.vercel.app", // your Vercel frontend (edit if different)
+  "https://notekeeper-eix8.onrender.com", // Render backend URL
 ];
 
 app.use(helmet());
