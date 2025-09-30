@@ -9,12 +9,31 @@ import { readNotes, writeNotes } from "./db.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+
+// CORS settings
+const allowedOrigins = [
+  "http://localhost:5173",              // local dev
+  "https://note-keeper-lac.vercel.app", // your Vercel frontend
+];
 
 app.use(helmet());
-app.use(cors({ origin: CORS_ORIGIN }));
-app.use(express.json());
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // allow requests with no origin (like curl or Postman)
+      if (!origin) return cb(null, true);
+      if (!allowedOrigins.includes(origin)) {
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+        return cb(new Error(msg), false);
+      }
+      return cb(null, true);
+    },
+    credentials: true,
+  })
+); 
 app.use(morgan("dev"));
+app.use(express.json()); 
+
 
 // Error handling middleware
 const handleValidationErrors = (req, res, next) => {
@@ -105,6 +124,12 @@ app.post(
         createdAt: now,
         updatedAt: now,
       };
+      
+      const notes = readNotes();
+      notes.push(newNote);
+      writeNotes(notes);
+      res.status(201).json(newNote);
+    } catch (error) {
       
       const notes = readNotes();
       notes.push(newNote);
