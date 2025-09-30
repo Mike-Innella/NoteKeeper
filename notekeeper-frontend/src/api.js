@@ -1,4 +1,4 @@
-const base = ""; // using Vite proxy for /notes
+const base = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 export async function listNotes() {
   const res = await fetch(`${base}/notes`);
