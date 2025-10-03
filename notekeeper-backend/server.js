@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 import { body, param, validationResult } from "express-validator";
 
-import { db } from "./lib/db.js"; // <-- new db object (users + notes)
+import { db, initDatabase } from "./lib/database.js"; // <-- PostgreSQL database
 import { signToken, authMiddleware } from "./lib/auth.js"; // <-- JWT helpers
 
 const app = express();
@@ -65,10 +65,7 @@ app.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const users = db.users.all();
-    const exists = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
+    const exists = await db.users.findByEmail(email);
     if (exists)
       return res.status(409).json({ error: "Email already registered" });
 
@@ -79,8 +76,7 @@ app.post(
       passwordHash,
       createdAt: new Date().toISOString(),
     };
-    users.push(user);
-    db.users.save(users);
+    await db.users.create(user);
 
     const token = signToken({ userId: user.id, email: user.email });
     return res
@@ -99,13 +95,10 @@ app.post(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const users = db.users.all();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
+    const user = await db.users.findByEmail(email);
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = signToken({ userId: user.id, email: user.email });
@@ -118,11 +111,8 @@ app.get(
   "/notes",
   authMiddleware,
   asyncHandler(async (req, res) => {
-    const all = db.notes.all();
-    const mine = all
-      .filter((n) => n.userId === req.user.userId)
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    res.json(mine);
+    const notes = await db.notes.findByUserId(req.user.userId);
+    res.json(notes);
   })
 );
 
@@ -131,10 +121,7 @@ app.get(
   [authMiddleware, param("id").notEmpty().withMessage("Note ID is required")],
   handleValidationErrors,
   asyncHandler(async (req, res) => {
-    const all = db.notes.all();
-    const note = all.find(
-      (n) => n.id === req.params.id && n.userId === req.user.userId
-    );
+    const note = await db.notes.findById(req.params.id, req.user.userId);
     if (!note) return res.status(404).json({ error: "Note not found" });
     res.json(note);
   })
@@ -163,10 +150,8 @@ app.post(
       updatedAt: now,
     };
 
-    const all = db.notes.all();
-    all.push(note);
-    db.notes.save(all);
-    res.status(201).json(note);
+    const created = await db.notes.create(note);
+    res.status(201).json(created);
   })
 );
 
@@ -183,21 +168,14 @@ app.put(
     const { id } = req.params;
     const { title, content } = req.body || {};
 
-    const all = db.notes.all();
-    const idx = all.findIndex(
-      (n) => n.id === id && n.userId === req.user.userId
-    );
-    if (idx === -1) return res.status(404).json({ error: "Note not found" });
+    const updates = {};
+    if (title !== undefined) updates.title = title.trim();
+    if (content !== undefined) updates.content = content.trim();
 
-    const now = new Date().toISOString();
-    all[idx] = {
-      ...all[idx],
-      title: title !== undefined ? title.trim() : all[idx].title,
-      content: content !== undefined ? content.trim() : all[idx].content,
-      updatedAt: now,
-    };
-    db.notes.save(all);
-    res.json(all[idx]);
+    const updated = await db.notes.update(id, req.user.userId, updates);
+    if (!updated) return res.status(404).json({ error: "Note not found" });
+    
+    res.json(updated);
   })
 );
 
@@ -207,13 +185,9 @@ app.delete(
   handleValidationErrors,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const all = db.notes.all();
-    const after = all.filter(
-      (n) => !(n.id === id && n.userId === req.user.userId)
-    );
-    if (after.length === all.length)
+    const deleted = await db.notes.delete(id, req.user.userId);
+    if (!deleted)
       return res.status(404).json({ error: "Note not found" });
-    db.notes.save(after);
     res.status(204).end();
   })
 );
@@ -229,6 +203,17 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initDatabase();
+    app.listen(PORT, () => {
+      console.log(`API listening on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

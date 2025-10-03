@@ -6,8 +6,10 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "dev": "node server.js",
+    "dev": "nodemon server.js",
     "start": "NODE_ENV=production node server.js",
+    "migrate": "node migrate-to-postgres.js",
+    "test:db": "node test-connection.js",
     "lint": "echo \"(optional) add eslint later\""
   },
   "dependencies": {
@@ -19,7 +21,8 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
-    "nanoid": "^5.1.6"
+    "nanoid": "^5.1.6",
+    "pg": "^8.16.3"
   },
   "keywords": [],
   "author": "",
