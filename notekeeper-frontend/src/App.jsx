@@ -9,6 +9,27 @@ import { useNotes } from "./hooks/useNotes";
 import { getUser, clearToken, clearUser } from "./auth";
 import { api } from "./api";
 
+// Theme icons as inline SVG components
+const SunIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5"></circle>
+    <line x1="12" y1="1" x2="12" y2="3"></line>
+    <line x1="12" y1="21" x2="12" y2="23"></line>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+    <line x1="1" y1="12" x2="3" y2="12"></line>
+    <line x1="21" y1="12" x2="23" y2="12"></line>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+  </svg>
+);
+
 // Authenticated app content - only renders when user is logged in
 function AuthenticatedApp({ onNotesCountChange }) {
   const {
@@ -78,6 +99,29 @@ export default function App() {
   const user = getUser();
   const [apiStatus, setApiStatus] = useState('checking');
   const [notesCount, setNotesCount] = useState(0);
+  const [theme, setTheme] = useState(() => {
+    // Get theme from localStorage or system preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      return savedTheme;
+    }
+    // Check system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
+
+  // Apply theme to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  // Toggle theme function
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  };
 
   // Check API health periodically
   useEffect(() => {
@@ -104,22 +148,22 @@ export default function App() {
           toastOptions={{
             duration: 3000,
             style: {
-              background: "#ffffff",
-              color: "#1f2937",
-              border: "1px solid #e5e7eb",
+              background: theme === 'dark' ? "#1e293b" : "#ffffff",
+              color: theme === 'dark' ? "#e2e8f0" : "#1f2937",
+              border: theme === 'dark' ? "1px solid #334155" : "1px solid #e5e7eb",
               borderRadius: "8px",
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
             },
             success: {
               iconTheme: {
                 primary: "#10b981",
-                secondary: "#ffffff",
+                secondary: theme === 'dark' ? "#1e293b" : "#ffffff",
               },
             },
             error: {
               iconTheme: {
                 primary: "#ef4444",
-                secondary: "#ffffff",
+                secondary: theme === 'dark' ? "#1e293b" : "#ffffff",
               },
             },
           }}
@@ -143,6 +187,14 @@ export default function App() {
                 <span className="api-status">
                   API Status: <span className={`status-dot ${apiStatus}`}>●</span>
                 </span>
+                <button
+                  className="btn btn-text theme-toggle"
+                  onClick={toggleTheme}
+                  aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                >
+                  {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+                </button>
                 {user && (
                   <>
                     <span className="user-email">{user.email}</span>
