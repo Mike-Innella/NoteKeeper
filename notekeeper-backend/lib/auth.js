@@ -5,25 +5,21 @@ import dotenv from "dotenv";
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  console.error("Missing JWT_SECRET in env");
+  console.error("❌ Missing JWT_SECRET in environment variables");
   process.exit(1);
 }
 
-// Create a signed JWT for user
+// Sign a JWT
 export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES || "7d" });
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES || "7d",
+  });
 }
 
-// Middleware to verify JWT and set req.user
+// Verify JWT + attach to req.user
 export function authMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({ error: "Missing or invalid Authorization header" });
-  }
-
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "");
 
   if (!token) {
     return res.status(401).json({ error: "Missing token" });
@@ -34,6 +30,9 @@ export function authMiddleware(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Token expired" });
+    }
     return res.status(401).json({ error: "Invalid token" });
   }
 }

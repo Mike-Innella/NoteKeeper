@@ -1,3 +1,4 @@
+// server.js
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -7,28 +8,26 @@ import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 import { body, param, validationResult } from "express-validator";
 
-import { db, initDatabase } from "./lib/database.js"; // <-- PostgreSQL database
-import { signToken, authMiddleware } from "./lib/auth.js"; // <-- JWT helpers
+import { db, initDatabase } from "./lib/database.js"; // your DB adapter
+import { signToken, authMiddleware } from "./lib/auth.js"; // JWT helpers
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS settings
+// Allowed origins for CORS
 const allowedOrigins = [
   "http://localhost:5173", // local dev (Vite)
-  "https://note-keeper-lac.vercel.app", // your Vercel frontend (edit if different)
-  "https://notekeeper-eix8.onrender.com", // Render backend URL
+  "https://note-keeper-lac.vercel.app", // your Vercel frontend
+  "https://notekeeper-eix8.onrender.com", // your Render backend
 ];
 
 app.use(helmet());
 app.use(
   cors({
     origin: (origin, cb) => {
-      // allow requests with no origin (curl/Postman)
-      if (!origin) return cb(null, true);
+      if (!origin) return cb(null, true); // allow curl/Postman
       if (!allowedOrigins.includes(origin)) {
-        const msg = `CORS blocked: ${origin}`;
-        return cb(new Error(msg), false);
+        return cb(new Error(`CORS blocked: ${origin}`), false);
       }
       return cb(null, true);
     },
@@ -38,7 +37,7 @@ app.use(
 app.use(morgan("dev"));
 app.use(express.json());
 
-// Utilities
+// Utility middlewares
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -54,7 +53,9 @@ app.get("/", (_req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
 
-// Auth
+//
+// Auth routes
+//
 app.post(
   "/auth/register",
   [
@@ -98,7 +99,9 @@ app.post(
     const user = await db.users.findByEmail(email);
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
-    const ok = await bcrypt.compare(password, user.password_hash);
+    // DB uses "password_hash"
+    const passwordField = user.password_hash || user.passwordHash;
+    const ok = await bcrypt.compare(password, passwordField);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = signToken({ userId: user.id, email: user.email });
@@ -106,7 +109,9 @@ app.post(
   })
 );
 
-// Notes per user
+//
+// Notes routes (require JWT)
+//
 app.get(
   "/notes",
   authMiddleware,
@@ -137,13 +142,14 @@ app.post(
   handleValidationErrors,
   asyncHandler(async (req, res) => {
     const { title = "", content = "" } = req.body || {};
-    if (!title.trim() && !content.trim())
+    if (!title.trim() && !content.trim()) {
       return res.status(400).json({ error: "Title or content required" });
+    }
 
     const now = new Date().toISOString();
     const note = {
       id: nanoid(),
-      userId: req.user.userId, // <-- scope to current user
+      userId: req.user.userId,
       title: title.trim(),
       content: content.trim(),
       createdAt: now,
@@ -174,7 +180,7 @@ app.put(
 
     const updated = await db.notes.update(id, req.user.userId, updates);
     if (!updated) return res.status(404).json({ error: "Note not found" });
-    
+
     res.json(updated);
   })
 );
@@ -186,13 +192,14 @@ app.delete(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const deleted = await db.notes.delete(id, req.user.userId);
-    if (!deleted)
-      return res.status(404).json({ error: "Note not found" });
+    if (!deleted) return res.status(404).json({ error: "Note not found" });
     res.status(204).end();
   })
 );
 
-// Global error handler (last in chain)
+//
+// Global error handler
+//
 app.use((err, _req, res, _next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({
@@ -203,15 +210,17 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-// Initialize database and start server
+//
+// Startup
+//
 async function startServer() {
   try {
     await initDatabase();
     app.listen(PORT, () => {
-      console.log(`API listening on http://localhost:${PORT}`);
+      console.log(`✅ API listening on http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 }
