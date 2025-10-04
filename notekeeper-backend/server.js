@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 // Allowed origins for CORS
 const allowedOrigins = [
   "http://localhost:5173", // local dev (Vite)
-  "https://note-keeper-lac.vercel.app", // your Vercel frontend
+  "https://note-keeper-jade.vercel.app/", // your Vercel frontend
   "https://notekeeper-eix8.onrender.com", // your Render backend
 ];
 
