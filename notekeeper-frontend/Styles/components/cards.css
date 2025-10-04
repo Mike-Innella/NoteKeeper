@@ -42,17 +42,27 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
+  position: relative;
 }
 
 input[type="search"] {
   flex: 1;
   padding: 1.25rem 2rem; /* 10px 16px */
+  padding-right: 3rem; /* Make room for clear button */
   border: 0.125rem solid var(--gray-300); /* 1px */
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   background: var(--gray-50);
   transition: all var(--transition-base);
   width: 100%;
+}
+
+/* Position clear button absolutely */
+.search-bar .btn-text {
+  position: absolute;
+  right: 1.5rem;
+  padding: 0.5rem;
+  min-width: auto;
 }
 
 input[type="search"]:focus {
