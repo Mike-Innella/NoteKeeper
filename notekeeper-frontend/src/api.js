@@ -1,7 +1,11 @@
 // src/api.js
 import { getToken } from "./auth";
 
-const BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+// Get the API URL from environment variable or default to empty string
+const API_URL = import.meta.env.VITE_API_URL || "";
+
+// Remove any trailing slashes to avoid double slashes in URLs
+const BASE = API_URL.replace(/\/$/, "");
 
 function authHeaders() {
   const tok = getToken();
@@ -9,20 +13,31 @@ function authHeaders() {
 }
 
 async function http(path, opts = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-      ...(opts.headers || {}),
-    },
-    ...opts,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} – ${text || path}`);
+  // Construct the full URL
+  const url = BASE ? `${BASE}${path}` : path;
+  
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+        ...(opts.headers || {}),
+      },
+      ...opts,
+    });
+    
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} – ${text || path}`);
+    }
+    
+    const ct = res.headers.get("content-type") || "";
+    return ct.includes("application/json") ? res.json() : undefined;
+  } catch (error) {
+    // Log the error for debugging
+    console.error(`API Error: ${error.message}`, { url, path, BASE });
+    throw error;
   }
-  const ct = res.headers.get("content-type") || "";
-  return ct.includes("application/json") ? res.json() : undefined;
 }
 
 export const api = {
