@@ -503,6 +503,7 @@ input[type="search"]::placeholder {
   display: flex;
   flex-direction: column;
   min-height: 25rem; /* 200px */
+  height: auto; /* Allow card to grow with content */
 }
 
 .note-card:hover {
@@ -533,22 +534,50 @@ input[type="search"]::placeholder {
 }
 
 .note-content {
-  flex: 1;
   color: var(--text-secondary);
   font-size: 1.75rem; /* 14px */
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
   margin-bottom: 2rem; /* 16px */
+  transition: max-height 0.3s ease;
+}
+
+/* Clamped note content */
+.note-content-clamped {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
+  flex: 1;
 }
 
 .note-empty {
   color: var(--text-tertiary);
   font-style: italic;
+}
+
+/* Expand/Collapse button */
+.btn-expand {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 1.75rem; /* 14px */
+  font-weight: 500;
+  padding: 0.75rem 0; /* 6px 0 */
+  margin-bottom: 2rem; /* 16px */
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.btn-expand:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.btn-expand:focus {
+  outline: none;
+  text-decoration: underline;
 }
 
 .note-footer {
