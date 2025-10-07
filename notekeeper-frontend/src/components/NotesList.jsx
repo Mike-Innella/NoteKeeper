@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, memo, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 
 function NotesList({ notes, onSave, onDelete, searchTerm }) {
@@ -49,6 +49,37 @@ const NoteItem = memo(function NoteItem({ note, onSave, onDelete }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef(null);
+
+  // Simple character count threshold as a fallback
+  const contentLengthThreshold = 250;
+  const showExpandButton = note.content && note.content.length > contentLengthThreshold;
+
+  useEffect(() => {
+    // Check if content overflows when component mounts or content changes
+    const checkOverflow = () => {
+      if (contentRef.current) {
+        const element = contentRef.current;
+        // Check overflow regardless of expanded state
+        const hasOverflow = element.scrollHeight > element.clientHeight;
+        setIsOverflowing(hasOverflow);
+      }
+    };
+
+    // Use multiple strategies to ensure overflow is detected
+    const timeoutId = setTimeout(checkOverflow, 100);
+    const rafId = requestAnimationFrame(checkOverflow);
+    
+    // Also check on window resize
+    window.addEventListener('resize', checkOverflow);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', checkOverflow);
+    };
+  }, [note.content, expanded]);
 
   async function handleSave() {
     if (isSaving) return;
@@ -110,11 +141,14 @@ const NoteItem = memo(function NoteItem({ note, onSave, onDelete }) {
             <span className="note-date">{formatDate(note.updatedAt)}</span>
           </div>
           
-          <div className={`note-content ${!expanded ? 'note-content-clamped' : ''}`}>
+          <div 
+            ref={contentRef}
+            className={`note-content ${!expanded ? 'note-content-clamped' : ''}`}
+          >
             {note.content || <span className="note-empty">No content</span>}
           </div>
           
-          {note.content && note.content.length > 400 && (
+          {(isOverflowing || expanded || showExpandButton) && (
             <button 
               className="btn-expand"
               onClick={() => setExpanded(!expanded)}
