@@ -477,7 +477,8 @@ input[type="search"]:focus {
   white-space: pre-wrap;
   word-break: break-word;
   margin-bottom: 1rem;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: scroll;
   display: -webkit-box;
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
