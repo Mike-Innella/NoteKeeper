@@ -48,6 +48,7 @@ const NoteItem = memo(function NoteItem({ note, onSave, onDelete }) {
   const [content, setContent] = useState(note.content);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   async function handleSave() {
     if (isSaving) return;
@@ -109,9 +110,19 @@ const NoteItem = memo(function NoteItem({ note, onSave, onDelete }) {
             <span className="note-date">{formatDate(note.updatedAt)}</span>
           </div>
           
-          <div className="note-content">
+          <div className={`note-content ${!expanded ? 'note-content-clamped' : ''}`}>
             {note.content || <span className="note-empty">No content</span>}
           </div>
+          
+          {note.content && note.content.length > 400 && (
+            <button 
+              className="btn-expand"
+              onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? "Show less" : "Show more"}
+            >
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          )}
           
           <div className="note-footer">
             <button 
