@@ -1,6 +1,6 @@
 # 📝 NoteKeeper
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://note-keeper-lac.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://note-keeper-jade.vercel.app/)
 [![Backend API](https://img.shields.io/badge/api-active-blue)](https://notekeeper-eix8.onrender.com)
 [![Frontend](https://img.shields.io/badge/frontend-Vercel-black)](https://vercel.com)
 [![Backend](https://img.shields.io/badge/backend-Render-purple)](https://render.com)
@@ -26,7 +26,7 @@ A modern, full-stack note-taking application with secure authentication, real-ti
 
 ## 🚀 Live Demo
 
-- **Frontend**: [https://note-keeper-lac.vercel.app/](https://note-keeper-lac.vercel.app/)
+- **Frontend**: [https://note-keeper-jade.vercel.app/](https://note-keeper-jade.vercel.app/)
 - **Backend API**: [https://notekeeper-eix8.onrender.com](https://notekeeper-eix8.onrender.com)
 
 > **Note**: The backend is hosted on Render's free tier, so the first request may take 30-50 seconds while the server wakes up.
