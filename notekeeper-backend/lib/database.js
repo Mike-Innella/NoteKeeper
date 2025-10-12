@@ -3,17 +3,15 @@ import pkg from "pg";
 const { Pool } = pkg;
 
 /**
- * Connection pool
- * - Works with Supabase Postgres from Render
- * - Forces TLS and skips cert chain verification in cloud/prod to avoid
- *   SELF_SIGNED_CERT_IN_CHAIN while still using encrypted connections.
+ * Render -> Supabase Postgres
+ * Force TLS and skip cert-chain verification to avoid SELF_SIGNED_CERT_IN_CHAIN,
+ * while still encrypting the connection.
  */
 
 const isSupabase =
   process.env.DATABASE_URL?.includes("supabase.co") ||
   process.env.DATABASE_URL?.includes("supabase.com");
 
-// Optional: set RENDER=1 in Render env for explicit detection
 const isRender =
   process.env.RENDER === "1" ||
   process.env.RENDER === "true" ||
@@ -21,25 +19,27 @@ const isRender =
 
 const isProd = process.env.NODE_ENV === "production";
 
-// In any cloudy/prod combo (or when using Supabase), use TLS without strict verify
 const shouldUseSSL = isSupabase || isRender || isProd;
+
+// Force TLS at the socket level (require: true) and skip chain verification
+const sslOption = shouldUseSSL
+  ? { require: true, rejectUnauthorized: false }
+  : false;
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Supabase requires TLS; Render may present a self-signed chain.
-  // Use TLS but skip chain verification in these environments.
-  ssl: shouldUseSSL ? { rejectUnauthorized: false } : false,
+  ssl: sslOption,
+  // (optional) help with connection stability on Render
+  keepAlive: true,
+  idleTimeoutMillis: 30000,
+  max: 10,
 });
 
-// (Optional) visibility during deploys – remove later if noisy
-console.log("[DB] SSL enabled:", shouldUseSSL);
+// Debug (remove after verifying once)
+console.log("[DB] SSL option:", sslOption);
 
 /**
- * Initialize database schema and helpers.
- * - users: auth identities
- * - notes: user-scoped notes
- * - Trigger keeps updated_at current on UPDATE
- * - Indexes for common queries
+ * Schema bootstrap
  */
 export async function initDatabase() {
   try {
@@ -68,7 +68,6 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id, updated_at DESC);
     `);
 
-    // Keep updated_at fresh on UPDATE
     await pool.query(`
       CREATE OR REPLACE FUNCTION set_updated_at()
       RETURNS TRIGGER AS $$
@@ -93,7 +92,7 @@ export async function initDatabase() {
   }
 }
 
-/** ---------- User operations ---------- */
+/** ---------- User ops ---------- */
 export const users = {
   async all() {
     try {
@@ -141,7 +140,7 @@ export const users = {
   },
 };
 
-/** ---------- Note operations ---------- */
+/** ---------- Note ops ---------- */
 export const notes = {
   async all() {
     try {
@@ -244,8 +243,6 @@ export const notes = {
 };
 
 /** ---------- Utilities ---------- */
-
-/** Simple health check: SELECT 1; returns true if DB reachable */
 export async function healthcheck() {
   try {
     await pool.query("SELECT 1");
@@ -255,7 +252,6 @@ export async function healthcheck() {
   }
 }
 
-/** Graceful shutdown helper (call on SIGINT/SIGTERM) */
 export async function closePool() {
   try {
     await pool.end();
@@ -265,6 +261,5 @@ export async function closePool() {
   }
 }
 
-/** Compatibility export */
 export const db = { users, notes, pool, initDatabase, healthcheck, closePool };
 export default db;
