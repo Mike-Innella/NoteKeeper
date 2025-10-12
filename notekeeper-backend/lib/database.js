@@ -4,19 +4,31 @@ const { Pool } = pkg;
 
 /**
  * Connection pool
- * - Uses Supabase Session Pooler (IPv4-optimized) for best performance
- * - SSL is required with self-signed certificates
+ * - Works with Supabase Postgres from Render
+ * - Forces TLS and skips cert chain verification in cloud/prod to avoid
+ *   SELF_SIGNED_CERT_IN_CHAIN while still using encrypted connections.
  */
-// Force SSL for Supabase connections
+
 const isSupabase =
-  process.env.DATABASE_URL && process.env.DATABASE_URL.includes("supabase.com");
+  process.env.DATABASE_URL?.includes("supabase.co") ||
+  process.env.DATABASE_URL?.includes("supabase.com");
+
+// Set RENDER=1 in your Render env for explicit detection (optional)
+const isRender =
+  process.env.RENDER === "1" ||
+  process.env.RENDER === "true" ||
+  process.env.RENDER === "TRUE";
+
+const isProd = process.env.NODE_ENV === "production";
+
+// In any cloudy/prod combo (or when using Supabase), use TLS without strict verify
+const shouldUseSSL = isSupabase || isRender || isProd;
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production" || process.env.IS_SUPABASE === "true"
-      ? { rejectUnauthorized: false } // ✅ required for Supabase
-      : false,
+  // Supabase requires TLS; Render may present a self-signed chain.
+  // Use TLS but skip chain verification in these environments.
+  ssl: shouldUseSSL ? { rejectUnauthorized: false } : false,
 });
 
 /**
@@ -46,7 +58,7 @@ export async function initDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
-    `);
+    ``);
 
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
