@@ -1,9 +1,33 @@
-node_modules
+# Dependencies
+node_modules/
 
-db/*.json
-
-.vercel
+# Environment variables
 .env
-
+.env.*
+.env.local
 .env.development
 .env.production
+.env.migration
+*.env
+
+# Old database files (now using Supabase)
+db/
+
+# Build outputs
+dist/
+.vercel/
+
+# Logs
+*.log
+backend.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
