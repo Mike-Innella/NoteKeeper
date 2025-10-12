@@ -5,12 +5,14 @@ A modern, secure note-taking application built with React, Express, and PostgreS
 ## 🚀 Tech Stack
 
 ### Frontend
+
 - **React 18** with Vite
 - **React Router** for navigation
 - **JWT** for authentication
 - **Deployed on Vercel**
 
 ### Backend
+
 - **Express.js** REST API
 - **PostgreSQL** (Supabase) database
 - **JWT** authentication
@@ -18,6 +20,7 @@ A modern, secure note-taking application built with React, Express, and PostgreS
 - **Deployed on Render**
 
 ### Infrastructure
+
 - **Database**: Supabase PostgreSQL
 - **Backend Hosting**: Render
 - **Frontend Hosting**: Vercel
@@ -36,11 +39,13 @@ A modern, secure note-taking application built with React, Express, and PostgreS
 ## 🛠️ Local Development Setup
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - npm or yarn
 - PostgreSQL database (or Supabase account)
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/Mike-Innella/NoteKeeper.git
 cd NoteKeeper
@@ -54,6 +59,7 @@ npm install
 ```
 
 Create a `.env` file in the backend directory:
+
 ```env
 # Database (use your Supabase connection string)
 DATABASE_URL=postgresql://user:password@host:5432/database
@@ -70,6 +76,7 @@ JWT_SECRET=your-very-secure-jwt-secret-key
 ```
 
 Start the backend server:
+
 ```bash
 npm run dev    # Development with nodemon
 # or
@@ -86,6 +93,7 @@ npm install
 ```
 
 Create a `.env` file in the frontend directory:
+
 ```env
 # Backend API URL
 VITE_API_URL=http://localhost:5000
@@ -95,6 +103,7 @@ VITE_API_URL=http://localhost:5000
 ```
 
 Start the frontend development server:
+
 ```bash
 npm run dev
 ```
@@ -175,6 +184,7 @@ NoteKeeper/
 ## ⚠️ Security Best Practices
 
 ### Never Commit Secrets
+
 - **NEVER** commit real credentials to git, even temporarily
 - All `.env` files are gitignored and should remain local only
 - Use `.env.example` files with placeholder values for documentation
@@ -183,11 +193,13 @@ NoteKeeper/
   - Deployment platform environment variables (Render/Vercel)
 
 ### Environment Files
+
 - `.env` - Your local configuration (NEVER commit)
 - `.env.example` - Template with placeholders (safe to commit)
 - `.env.migration` - Local migration reference (NEVER commit)
 
 ### If Credentials Are Exposed
+
 1. **Immediately rotate all exposed credentials**
 2. Update credentials in deployment platforms
 3. Remove sensitive data from git history using:
@@ -195,7 +207,7 @@ NoteKeeper/
    # Using BFG Repo-Cleaner (recommended)
    bfg --delete-files .env
    bfg --replace-text passwords.txt  # file with patterns to replace
-   
+
    # Or using git filter-branch
    git filter-branch --force --index-filter \
      "git rm --cached --ignore-unmatch .env" \
@@ -205,6 +217,7 @@ NoteKeeper/
 ## 🗄️ Database Schema
 
 ### Users Table
+
 ```sql
 CREATE TABLE users (
   id VARCHAR(255) PRIMARY KEY,
@@ -215,6 +228,7 @@ CREATE TABLE users (
 ```
 
 ### Notes Table
+
 ```sql
 CREATE TABLE notes (
   id VARCHAR(255) PRIMARY KEY,
@@ -229,10 +243,12 @@ CREATE TABLE notes (
 ## 📚 API Endpoints
 
 ### Authentication
+
 - `POST /auth/register` - Register new user
 - `POST /auth/login` - Login user
 
 ### Notes (Requires Authentication)
+
 - `GET /notes` - Get all notes for logged-in user
 - `GET /notes/:id` - Get specific note
 - `POST /notes` - Create new note
@@ -240,12 +256,14 @@ CREATE TABLE notes (
 - `DELETE /notes/:id` - Delete note
 
 ### Health
+
 - `GET /` - API status
 - `GET /healthz` - Health check for monitoring
 
 ## 🧪 Testing
 
 ### Test Authentication
+
 ```bash
 # Register
 curl -X POST http://localhost:5000/auth/register \
@@ -259,6 +277,7 @@ curl -X POST http://localhost:5000/auth/login \
 ```
 
 ### Test Notes (use token from login)
+
 ```bash
 # Create note
 curl -X POST http://localhost:5000/notes \
@@ -282,6 +301,7 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Author
 
 **Mike Innella**
+
 - GitHub: [@Mike-Innella](https://github.com/Mike-Innella)
 
 ## 🙏 Acknowledgments
@@ -295,5 +315,3 @@ This project is licensed under the MIT License.
 ---
 
 **Live Demo**: [https://note-keeper-jade.vercel.app](https://note-keeper-jade.vercel.app)
-
-**API Documentation**: See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for deployment details.
