@@ -4,15 +4,18 @@ const { Pool } = pkg;
 
 /**
  * Connection pool
- * - Use Render's Internal Database URL for best performance.
- * - SSL is required in production on Render.
+ * - Uses Supabase Session Pooler (IPv4-optimized) for best performance
+ * - SSL is required with self-signed certificates
  */
-const sslRequired =
-  process.env.NODE_ENV === "production" || process.env.PGSSLMODE === "require";
+// Force SSL for Supabase connections
+const isSupabase = process.env.DATABASE_URL && process.env.DATABASE_URL.includes("supabase.com");
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: sslRequired ? { rejectUnauthorized: false } : false,
+  ssl: isSupabase || process.env.NODE_ENV === "production" ? { 
+    rejectUnauthorized: false,  // Accept Supabase's self-signed certificate
+    require: true
+  } : false,
 });
 
 /**
