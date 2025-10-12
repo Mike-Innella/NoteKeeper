@@ -1,4 +1,4 @@
-// database.js
+// lib/database.js
 import pkg from "pg";
 const { Pool } = pkg;
 
@@ -13,7 +13,7 @@ const isSupabase =
   process.env.DATABASE_URL?.includes("supabase.co") ||
   process.env.DATABASE_URL?.includes("supabase.com");
 
-// Set RENDER=1 in your Render env for explicit detection (optional)
+// Optional: set RENDER=1 in Render env for explicit detection
 const isRender =
   process.env.RENDER === "1" ||
   process.env.RENDER === "true" ||
@@ -30,6 +30,9 @@ export const pool = new Pool({
   // Use TLS but skip chain verification in these environments.
   ssl: shouldUseSSL ? { rejectUnauthorized: false } : false,
 });
+
+// (Optional) visibility during deploys – remove later if noisy
+console.log("[DB] SSL enabled:", shouldUseSSL);
 
 /**
  * Initialize database schema and helpers.
@@ -58,7 +61,7 @@ export async function initDatabase() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
-    ``);
+    `);
 
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
