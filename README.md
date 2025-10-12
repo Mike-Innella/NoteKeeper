@@ -172,6 +172,36 @@ NoteKeeper/
 - Per-user data isolation
 - SSL/TLS encryption for database connections
 
+## ⚠️ Security Best Practices
+
+### Never Commit Secrets
+- **NEVER** commit real credentials to git, even temporarily
+- All `.env` files are gitignored and should remain local only
+- Use `.env.example` files with placeholder values for documentation
+- Real credentials should only exist in:
+  - Local `.env` files (gitignored)
+  - Deployment platform environment variables (Render/Vercel)
+
+### Environment Files
+- `.env` - Your local configuration (NEVER commit)
+- `.env.example` - Template with placeholders (safe to commit)
+- `.env.migration` - Local migration reference (NEVER commit)
+
+### If Credentials Are Exposed
+1. **Immediately rotate all exposed credentials**
+2. Update credentials in deployment platforms
+3. Remove sensitive data from git history using:
+   ```bash
+   # Using BFG Repo-Cleaner (recommended)
+   bfg --delete-files .env
+   bfg --replace-text passwords.txt  # file with patterns to replace
+   
+   # Or using git filter-branch
+   git filter-branch --force --index-filter \
+     "git rm --cached --ignore-unmatch .env" \
+     --prune-empty --tag-name-filter cat -- --all
+   ```
+
 ## 🗄️ Database Schema
 
 ### Users Table
