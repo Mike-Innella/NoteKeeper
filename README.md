@@ -110,16 +110,17 @@ The frontend will run on `http://localhost:5173`
 3. Configure build settings:
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
+   - **Root Directory**: `notekeeper-backend`
 4. Add environment variables:
    ```
-   DATABASE_URL=your_supabase_connection_string
-   JWT_SECRET=your_jwt_secret
+   DATABASE_URL=postgresql://postgres.pytuhhdxbdscqktvtlal:YOUR_PASSWORD@aws-1-us-east-1.pooler.supabase.com:5432/postgres
+   JWT_SECRET=your_supabase_jwt_key
    NODE_ENV=production
    PORT=10000
-   CORS_ORIGIN=https://your-frontend.vercel.app
+   CORS_ORIGIN=https://note-keeper-jade.vercel.app
    ```
 5. Add Health Check Path: `/healthz`
-6. Deploy
+6. Deploy to: `https://notekeeper-eix8.onrender.com`
 
 ### Deploy Frontend to Vercel
 
@@ -131,9 +132,9 @@ The frontend will run on `http://localhost:5173`
    - **Output Directory**: `dist`
 4. Add environment variables:
    ```
-   VITE_API_URL=https://your-backend.onrender.com
+   VITE_API_URL=https://notekeeper-eix8.onrender.com
    ```
-5. Deploy
+5. Deploy to: `https://note-keeper-jade.vercel.app`
 
 ## 📁 Project Structure
 
