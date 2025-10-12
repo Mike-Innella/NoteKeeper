@@ -8,14 +8,15 @@ const { Pool } = pkg;
  * - SSL is required with self-signed certificates
  */
 // Force SSL for Supabase connections
-const isSupabase = process.env.DATABASE_URL && process.env.DATABASE_URL.includes("supabase.com");
+const isSupabase =
+  process.env.DATABASE_URL && process.env.DATABASE_URL.includes("supabase.com");
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isSupabase || process.env.NODE_ENV === "production" ? { 
-    rejectUnauthorized: false,  // Accept Supabase's self-signed certificate
-    require: true
-  } : false,
+  ssl:
+    process.env.NODE_ENV === "production" || process.env.IS_SUPABASE === "true"
+      ? { rejectUnauthorized: false } // ✅ required for Supabase
+      : false,
 });
 
 /**
