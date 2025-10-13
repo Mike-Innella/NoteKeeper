@@ -1,22 +1,70 @@
 import pkg from "pg";
 const { Pool } = pkg;
 
-const forceSSL =
-  process.env.NODE_ENV === "production" ||
-  process.env.RENDER === "1" ||
-  /supabase\.co|supabase\.com/.test(process.env.DATABASE_URL || "");
+// Check if we're in production or using Supabase
+const isProduction = process.env.NODE_ENV === "production";
+const isRender = process.env.RENDER === "true" || !!process.env.RENDER;
+const isSupabase = /supabase\.co|supabase\.com/.test(process.env.DATABASE_URL || "");
 
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: forceSSL ? { rejectUnauthorized: false } : false,
-  keepAlive: true,
-  idleTimeoutMillis: 30000,
-  max: 10,
+// Determine SSL configuration
+const getSSLConfig = () => {
+  // For local development without SSL
+  if (!isProduction && !isRender && !isSupabase) {
+    return false;
+  }
+  
+  // For production, Render, or Supabase - use SSL with self-signed cert support
+  return {
+    rejectUnauthorized: false,
+    // Additional SSL options for compatibility
+    sslmode: 'require'
+  };
+};
+
+// Create connection pool with proper SSL handling
+const createPool = () => {
+  const config = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: getSSLConfig(),
+    keepAlive: true,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000, // Add connection timeout
+    max: 10,
+  };
+  
+  // Log configuration in non-production for debugging
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Database] Connection config:", {
+      hasSSL: !!config.ssl,
+      isProduction,
+      isRender,
+      isSupabase,
+      dbHost: config.connectionString?.split('@')[1]?.split('/')[0] || 'unknown'
+    });
+  }
+  
+  return new Pool(config);
+};
+
+export const pool = createPool();
+
+// Add connection event handlers for better debugging
+pool.on('error', (err) => {
+  console.error('[Database] Unexpected pool error:', err);
+});
+
+pool.on('connect', () => {
+  console.log('[Database] New client connected to pool');
 });
 
 async function query(sql, params = []) {
-  const res = await pool.query(sql, params);
-  return res;
+  try {
+    const res = await pool.query(sql, params);
+    return res;
+  } catch (error) {
+    console.error('[Database] Query error:', error.message);
+    throw error;
+  }
 }
 // --- Schema bootstrap ---
 const schemaSQL = `
@@ -64,10 +112,27 @@ export async function initDatabase() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not set");
   }
-  await query(schemaSQL);
-  // quick smoke test
-  await query("SELECT 1;");
-  console.log("[Database] Initialized and healthy");
+  
+  try {
+    // Test connection first
+    console.log("[Database] Testing connection...");
+    const testResult = await query("SELECT 1 as test;");
+    console.log("[Database] Connection test successful");
+    
+    // Initialize schema
+    console.log("[Database] Initializing schema...");
+    await query(schemaSQL);
+    
+    // Final health check
+    await query("SELECT 1;");
+    console.log("[Database] Initialized and healthy");
+  } catch (error) {
+    console.error("[Database] Initialization failed:", error.message);
+    if (error.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+      console.error("[Database] SSL certificate issue detected. Ensure DATABASE_URL is correct and SSL is properly configured.");
+    }
+    throw error;
+  }
 }
 
 export async function healthcheck() {
