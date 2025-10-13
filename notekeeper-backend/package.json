@@ -9,7 +9,7 @@
     "dev": "nodemon server.js",
     "start": "NODE_ENV=production node server.js",
     "migrate": "node migrate-to-postgres.js",
-    "test:db": "node test-connection.js",
+    "test:db": "node db-connection.test.js",
     "lint": "echo \"(optional) add eslint later\""
   },
   "dependencies": {
