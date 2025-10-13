@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { isTokenBlacklisted } from "./security.js";
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -22,9 +23,15 @@ export function authMiddleware(req, res, next) {
     return res.status(401).json({ error: "Missing token" });
   }
 
+  // Check if token is blacklisted (user logged out)
+  if (isTokenBlacklisted(token)) {
+    return res.status(401).json({ error: "Token has been revoked" });
+  }
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    req.token = token; // Store token for potential blacklisting
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError") {

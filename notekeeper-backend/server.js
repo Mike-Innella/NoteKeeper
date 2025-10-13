@@ -10,6 +10,16 @@ import { body, param, validationResult } from "express-validator";
 
 import { db, initDatabase } from "./lib/database.js"; // your DB adapter
 import { signToken, authMiddleware } from "./lib/auth.js"; // JWT helpers
+import { 
+  authRateLimiter, 
+  generalRateLimiter,
+  sanitizeRequestBody,
+  securityLogger,
+  validateInputLength,
+  blacklistToken,
+  securityHeaders,
+  cspConfig
+} from "./lib/security.js"; // Security enhancements
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,7 +31,10 @@ const allowedOrigins = [
   process.env.CORS_ORIGIN, // Dynamic CORS origin from environment
 ].filter(Boolean); // Remove any undefined values
 
-app.use(helmet());
+app.use(helmet({
+  ...securityHeaders,
+  contentSecurityPolicy: cspConfig
+}));
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -35,7 +48,11 @@ app.use(
   })
 );
 app.use(morgan("dev"));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Limit payload size
+app.use(securityLogger); // Log security events
+app.use(generalRateLimiter); // Apply general rate limiting
+app.use(validateInputLength(10000)); // Validate input length
+app.use(sanitizeRequestBody); // Sanitize all request bodies
 
 // Utility middlewares
 const handleValidationErrors = (req, res, next) => {
@@ -63,6 +80,7 @@ app.get("/healthz", (_req, res) => {
 //
 app.post(
   "/auth/register",
+  authRateLimiter, // Rate limit auth endpoints
   [
     body("email").isEmail().withMessage("Valid email required"),
     body("password").isLength({ min: 6 }).withMessage("Password min 6 chars"),
@@ -93,6 +111,7 @@ app.post(
 
 app.post(
   "/auth/login",
+  authRateLimiter, // Rate limit auth endpoints
   [
     body("email").isEmail().withMessage("Valid email required"),
     body("password").notEmpty().withMessage("Password required"),
@@ -111,6 +130,22 @@ app.post(
 
     const token = signToken({ userId: user.id, email: user.email });
     return res.json({ token, user: { id: user.id, email: user.email } });
+  })
+);
+
+// Logout endpoint
+app.post(
+  "/auth/logout",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const hdr = req.headers.authorization || "";
+    const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
+    
+    if (token) {
+      blacklistToken(token);
+    }
+    
+    res.json({ message: "Logged out successfully" });
   })
 );
 
