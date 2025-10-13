@@ -1,47 +1,69 @@
 import pkg from "pg";
+import { parse } from "pg-connection-string";
 const { Pool } = pkg;
 
-// Check if we're in production or using Supabase
-const isProduction = process.env.NODE_ENV === "production";
-const isRender = process.env.RENDER === "true" || !!process.env.RENDER;
-const isSupabase = /supabase\.co|supabase\.com/.test(process.env.DATABASE_URL || "");
-
-// Determine SSL configuration
-const getSSLConfig = () => {
-  // For local development without SSL
-  if (!isProduction && !isRender && !isSupabase) {
-    return false;
+// Parse DATABASE_URL to get connection parameters
+const parseConnectionString = (connectionString) => {
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
   }
   
-  // For production, Render, or Supabase - use SSL with self-signed cert support
-  return {
-    rejectUnauthorized: false,
-    // Additional SSL options for compatibility
-    sslmode: 'require'
-  };
+  try {
+    // Use pg-connection-string to parse the URL
+    const config = parse(connectionString);
+    return config;
+  } catch (error) {
+    console.error("[Database] Failed to parse DATABASE_URL:", error);
+    throw error;
+  }
 };
 
-// Create connection pool with proper SSL handling
+// Create connection pool with proper SSL handling for Supabase
 const createPool = () => {
+  const connectionString = process.env.DATABASE_URL;
+  
+  // Parse the connection string to get individual parameters
+  const parsedConfig = parseConnectionString(connectionString);
+  
+  // Check environment
+  const isProduction = process.env.NODE_ENV === "production";
+  const isRender = process.env.RENDER === "true" || !!process.env.RENDER;
+  const isSupabase = /supabase\.co|supabase\.com/.test(connectionString || "");
+  
+  // Build the configuration object
   const config = {
-    connectionString: process.env.DATABASE_URL,
-    ssl: getSSLConfig(),
-    keepAlive: true,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000, // Add connection timeout
+    host: parsedConfig.host,
+    port: parsedConfig.port || 5432,
+    database: parsedConfig.database,
+    user: parsedConfig.user,
+    password: parsedConfig.password,
+    // Connection pool settings
     max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,
   };
   
-  // Log configuration in non-production for debugging
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[Database] Connection config:", {
-      hasSSL: !!config.ssl,
-      isProduction,
-      isRender,
-      isSupabase,
-      dbHost: config.connectionString?.split('@')[1]?.split('/')[0] || 'unknown'
-    });
+  // Apply SSL configuration for production/Render/Supabase
+  if (isProduction || isRender || isSupabase) {
+    config.ssl = {
+      rejectUnauthorized: false,
+      // This is critical for Supabase
+      require: true,
+    };
   }
+  
+  // Log configuration (without sensitive data) for debugging
+  console.log("[Database] Initializing pool with config:", {
+    host: config.host,
+    port: config.port,
+    database: config.database,
+    hasSSL: !!config.ssl,
+    sslRejectUnauthorized: config.ssl?.rejectUnauthorized,
+    isProduction,
+    isRender,
+    isSupabase,
+  });
   
   return new Pool(config);
 };
