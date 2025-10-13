@@ -1,31 +1,14 @@
-// lib/database.js
 import pkg from "pg";
 const { Pool } = pkg;
 
-/**
- * Render -> Supabase Postgres
- * Force TLS and skip cert-chain verification to avoid SELF_SIGNED_CERT_IN_CHAIN,
- * while still encrypting the connection.
- */
-const isSupabase =
-  process.env.DATABASE_URL?.includes("supabase.co") ||
-  process.env.DATABASE_URL?.includes("supabase.com");
-
-const isRender =
+const forceSSL =
+  process.env.NODE_ENV === "production" ||
   process.env.RENDER === "1" ||
-  process.env.RENDER === "true" ||
-  process.env.RENDER === "TRUE";
-
-const isProd = process.env.NODE_ENV === "production";
-const shouldUseSSL = isSupabase || isRender || isProd;
-
-const sslOption = shouldUseSSL
-  ? { require: true, rejectUnauthorized: false }
-  : false;
+  /supabase\.co|supabase\.com/.test(process.env.DATABASE_URL || "");
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: sslOption,
+  ssl: forceSSL ? { rejectUnauthorized: false } : false,
   keepAlive: true,
   idleTimeoutMillis: 30000,
   max: 10,
@@ -35,7 +18,6 @@ async function query(sql, params = []) {
   const res = await pool.query(sql, params);
   return res;
 }
-
 // --- Schema bootstrap ---
 const schemaSQL = `
 CREATE TABLE IF NOT EXISTS users (
