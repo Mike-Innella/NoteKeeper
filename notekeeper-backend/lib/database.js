@@ -7,7 +7,6 @@ const { Pool } = pkg;
  * Force TLS and skip cert-chain verification to avoid SELF_SIGNED_CERT_IN_CHAIN,
  * while still encrypting the connection.
  */
-
 const isSupabase =
   process.env.DATABASE_URL?.includes("supabase.co") ||
   process.env.DATABASE_URL?.includes("supabase.com");
@@ -18,10 +17,8 @@ const isRender =
   process.env.RENDER === "TRUE";
 
 const isProd = process.env.NODE_ENV === "production";
-
 const shouldUseSSL = isSupabase || isRender || isProd;
 
-// Force TLS at the socket level (require: true) and skip chain verification
 const sslOption = shouldUseSSL
   ? { require: true, rejectUnauthorized: false }
   : false;
@@ -29,228 +26,159 @@ const sslOption = shouldUseSSL
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: sslOption,
-  // (optional) help with connection stability on Render
   keepAlive: true,
   idleTimeoutMillis: 30000,
   max: 10,
 });
 
-// Debug (remove after verifying once)
-console.log("[DB] SSL option:", sslOption);
+async function query(sql, params = []) {
+  const res = await pool.query(sql, params);
+  return res;
+}
 
-/**
- * Schema bootstrap
- */
+// --- Schema bootstrap ---
+const schemaSQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notes (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- update updated_at trigger
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'set_updated_at') THEN
+    CREATE OR REPLACE FUNCTION set_updated_at()
+    RETURNS TRIGGER AS $BODY$
+    BEGIN
+      NEW.updated_at = NOW();
+      RETURN NEW;
+    END;
+    $BODY$ LANGUAGE plpgsql;
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'notes_set_updated_at') THEN
+    CREATE TRIGGER notes_set_updated_at
+    BEFORE UPDATE ON notes
+    FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END$$;
+`;
+
 export async function initDatabase() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id            VARCHAR(255) PRIMARY KEY,
-        email         VARCHAR(255) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS notes (
-        id         VARCHAR(255) PRIMARY KEY,
-        user_id    VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        title      TEXT,
-        content    TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-      );
-    `);
-
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
-      CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id, updated_at DESC);
-    `);
-
-    await pool.query(`
-      CREATE OR REPLACE FUNCTION set_updated_at()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        NEW.updated_at = now();
-        RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-
-      DROP TRIGGER IF EXISTS trg_set_updated_at ON notes;
-
-      CREATE TRIGGER trg_set_updated_at
-      BEFORE UPDATE ON notes
-      FOR EACH ROW
-      EXECUTE FUNCTION set_updated_at();
-    `);
-
-    console.log("[Database] Tables initialized successfully");
-  } catch (error) {
-    console.error("[Database] Error initializing tables:", error);
-    throw error;
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is not set");
   }
+  await query(schemaSQL);
+  // quick smoke test
+  await query("SELECT 1;");
+  console.log("[Database] Initialized and healthy");
 }
 
-/** ---------- User ops ---------- */
-export const users = {
-  async all() {
-    try {
-      const { rows } = await pool.query(
-        `SELECT id, email, created_at
-         FROM users
-         ORDER BY created_at DESC`
-      );
-      return rows;
-    } catch (error) {
-      console.error("[Database] Error fetching users:", error);
-      return [];
-    }
-  },
-
-  async findByEmail(email) {
-    try {
-      const { rows } = await pool.query(
-        `SELECT id, email, password_hash, created_at
-         FROM users
-         WHERE LOWER(email) = LOWER($1)
-         LIMIT 1`,
-        [email]
-      );
-      return rows[0] || null;
-    } catch (error) {
-      console.error("[Database] Error finding user by email:", error);
-      return null;
-    }
-  },
-
-  async create(user) {
-    try {
-      const { rows } = await pool.query(
-        `INSERT INTO users (id, email, password_hash, created_at)
-         VALUES ($1, $2, $3, COALESCE($4, now()))
-         RETURNING id, email, created_at`,
-        [user.id, user.email, user.passwordHash, user.createdAt || null]
-      );
-      return rows[0];
-    } catch (error) {
-      console.error("[Database] Error creating user:", error);
-      throw error;
-    }
-  },
-};
-
-/** ---------- Note ops ---------- */
-export const notes = {
-  async all() {
-    try {
-      const { rows } = await pool.query(
-        `SELECT id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"
-         FROM notes
-         ORDER BY updated_at DESC`
-      );
-      return rows;
-    } catch (error) {
-      console.error("[Database] Error fetching notes:", error);
-      return [];
-    }
-  },
-
-  async findByUserId(userId) {
-    try {
-      const { rows } = await pool.query(
-        `SELECT id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"
-         FROM notes
-         WHERE user_id = $1
-         ORDER BY updated_at DESC`,
-        [userId]
-      );
-      return rows;
-    } catch (error) {
-      console.error("[Database] Error fetching notes by user:", error);
-      return [];
-    }
-  },
-
-  async findById(id, userId) {
-    try {
-      const { rows } = await pool.query(
-        `SELECT id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"
-         FROM notes
-         WHERE id = $1 AND user_id = $2
-         LIMIT 1`,
-        [id, userId]
-      );
-      return rows[0] || null;
-    } catch (error) {
-      console.error("[Database] Error finding note:", error);
-      return null;
-    }
-  },
-
-  async create(note) {
-    try {
-      const { rows } = await pool.query(
-        `INSERT INTO notes (id, user_id, title, content, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, COALESCE($5, now()), COALESCE($6, now()))
-         RETURNING id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"`,
-        [
-          note.id,
-          note.userId,
-          note.title ?? null,
-          note.content ?? null,
-          note.createdAt || null,
-          note.updatedAt || null,
-        ]
-      );
-      return rows[0];
-    } catch (error) {
-      console.error("[Database] Error creating note:", error);
-      throw error;
-    }
-  },
-
-  async update(id, userId, updates) {
-    try {
-      const { title = null, content = null } = updates || {};
-      const { rows } = await pool.query(
-        `UPDATE notes
-         SET title = COALESCE($1, title),
-             content = COALESCE($2, content)
-         WHERE id = $3 AND user_id = $4
-         RETURNING id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"`,
-        [title, content, id, userId]
-      );
-      return rows[0] || null;
-    } catch (error) {
-      console.error("[Database] Error updating note:", error);
-      throw error;
-    }
-  },
-
-  async delete(id, userId) {
-    try {
-      const { rowCount } = await pool.query(
-        `DELETE FROM notes WHERE id = $1 AND user_id = $2`,
-        [id, userId]
-      );
-      return rowCount > 0;
-    } catch (error) {
-      console.error("[Database] Error deleting note:", error);
-      throw error;
-    }
-  },
-};
-
-/** ---------- Utilities ---------- */
 export async function healthcheck() {
-  try {
-    await pool.query("SELECT 1");
-    return true;
-  } catch {
-    return false;
-  }
+  const { rows } = await query("SELECT NOW() as now");
+  return rows?.[0]?.now;
 }
+
+// --- Users adapter ---
+const users = {
+  async findByEmail(email) {
+    const { rows } = await query(
+      `SELECT id, email, password_hash, created_at FROM users WHERE email = $1 LIMIT 1`,
+      [email]
+    );
+    return rows[0] || null;
+  },
+  async create(user) {
+    const { id, email, passwordHash, createdAt } = user;
+    const { rows } = await query(
+      `INSERT INTO users (id, email, password_hash, created_at)
+       VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()))
+       RETURNING id, email, created_at`,
+      [id, email, passwordHash, createdAt || null]
+    );
+    return rows[0];
+  },
+};
+
+// --- Notes adapter ---
+const notes = {
+  async findByUserId(userId) {
+    const { rows } = await query(
+      `SELECT id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM notes WHERE user_id = $1 ORDER BY updated_at DESC`,
+      [userId]
+    );
+    return rows;
+  },
+  async findById(id, userId) {
+    const { rows } = await query(
+      `SELECT id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"
+       FROM notes WHERE id = $1 AND user_id = $2 LIMIT 1`,
+      [id, userId]
+    );
+    return rows[0] || null;
+  },
+  async create(note) {
+    const { id, userId, title, content, createdAt, updatedAt } = note;
+    const { rows } = await query(
+      `INSERT INTO notes (id, user_id, title, content, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, NOW()), COALESCE($6::timestamptz, NOW()))
+       RETURNING id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [id, userId, title, content, createdAt || null, updatedAt || null]
+    );
+    return rows[0];
+  },
+  async update(id, userId, updates) {
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (updates.title !== undefined) {
+      fields.push(`title = $${idx++}`);
+      values.push(updates.title);
+    }
+    if (updates.content !== undefined) {
+      fields.push(`content = $${idx++}`);
+      values.push(updates.content);
+    }
+    if (!fields.length) return this.findById(id, userId);
+
+    // updated_at handled by trigger, but we can set it explicitly too
+    fields.push(`updated_at = NOW()`);
+
+    values.push(id);
+    values.push(userId);
+
+    const { rows } = await query(
+      `UPDATE notes SET ${fields.join(", ")}
+       WHERE id = $${idx++} AND user_id = $${idx}
+       RETURNING id, user_id AS "userId", title, content, created_at AS "createdAt", updated_at AS "updatedAt"`,
+      values
+    );
+    return rows[0] || null;
+  },
+  async delete(id, userId) {
+    const { rowCount } = await query(
+      `DELETE FROM notes WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    return rowCount > 0;
+  },
+};
 
 export async function closePool() {
   try {
